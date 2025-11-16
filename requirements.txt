@@ -1,0 +1,30 @@
+# Core AI
+langchain
+langchain-openai
+langchain-ollama
+langgraph
+
+# Backend
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# Integrations
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+slack_sdk
+
+# Workflow / Scheduling
+apscheduler
+
+# Utilities
+requests
+httpx
+loguru
+
+# Extras
+faiss-cpu
+SQLAlchemy
+notion-client
