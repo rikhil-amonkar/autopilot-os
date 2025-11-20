@@ -8,6 +8,27 @@ The system is built with FastAPI, LangChain, and external APIs like Gmail, Googl
 
 This project serves as a lightweight foundation for experimenting with AI agents, task automation, and LLM-driven workflows.
 
+## 🌊 User Flow
+
+```
+You: "Hey, send an email to John about tomorrow's meeting"
+            ↓
+Agent Planner: "I need to: 1) Draft email 2) Send via Gmail"
+            ↓
+Tool Router: "Route to Gmail tool"
+            ↓
+Executor: "Executing... email sent!"
+            ↓
+You: "Thanks! Can you also add it to my calendar?"
+            ↓
+Agent: "Done! Added to calendar for tomorrow at 2pm"
+```
+
+## 🤖 AI Agent Workflow
+
+<p>Agentic Workflow for LangGraph (Tool Calling)</p>
+<img src="images/langchain-agent-workflow.png" alt="Agentic Workflow for LangGraph (Tool Calling)" width="400">
+
 ## ✨ Features
 
 - 🤖 Autonomous multi-step task execution
