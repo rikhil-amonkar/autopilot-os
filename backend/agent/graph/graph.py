@@ -98,6 +98,21 @@ def list_unread_emails(limit: int = 10):
     email_ids = [email["id"] for email in unread_emails.get("messages", [])]
     cleaned_ids = [id.replace("<", "").replace(">", "") for id in email_ids]
     
+    print("="*50)
+    print("\nHere are your unread emails:\n")
+    
+    # * Display email list to terminal
+    for clean_id in cleaned_ids:
+        
+        # * Extract email contents
+        subject, sender, date, _ = extract_email_info(clean_id)
+        
+        if subject and sender and date:
+            date = date[:25]
+            print(f"**ID:** {clean_id} | **Subject:** {subject} | **Date:** {date} | **From:** {sender}")
+        else:
+            print(f"**ID:** {clean_id} | Not Enough Info")
+    
     return cleaned_ids[:limit]
     
 # * Convert base64 content to base10 text
@@ -143,20 +158,8 @@ def validate_text_amount(text: str):
     
     return ratio > 0.7  # Set a threshold (more than 70% has to be valid text)
 
-# * Summarize email content based on ID
-@tool
-def summarize_email(email_id: str):
-    """Summarize a single email by its message ID. The email_id must be a string like '19a8f479946bf71e' returned from list_unread_emails tool."""
+def extract_email_info(email_id: str):
     
-    print("TOOL CALLED: Summarize E-Mail on", email_id)
-    
-    # * Clean the email ID format
-    email_id = email_id.lower().strip()
-    
-    # DEBUG: Email ID format
-    print(f"Received email_id type: {type(email_id)}")
-    print(f"Received email_id value: {repr(email_id)}")
-
     # * Locate email from ID through API service
     service = connect()
     current_email = service.users().messages().get(
@@ -211,9 +214,28 @@ def summarize_email(email_id: str):
     sender = next((header["value"] for header in headers if header["name"] == "From"), None)
     date = next((header["value"] for header in headers if header["name"] == "Date"), None)
     
+    return subject, sender, date, full_email_body
+
+# * Summarize email content based on ID
+@tool
+def summarize_email(email_id: str):
+    """Summarize a single email by its message ID. The email_id must be a string like '19a8f479946bf71e' returned from list_unread_emails tool."""
+    
+    print("TOOL CALLED: Summarize E-Mail on", email_id)
+    
+    # * Clean the email ID format
+    email_id = email_id.lower().strip()
+    
+    # # DEBUG: Email ID format
+    # print(f"Received email_id type: {type(email_id)}")
+    # print(f"Received email_id value: {repr(email_id)}")
+    
+    # * Extract email contents
+    subject, sender, date, full_email_body = extract_email_info(email_id)
+
     # DEBUG: Email content
     print("="*50)
-    print(f"Email: {email_id}\n")
+    print(f"Email ID: {email_id}\n")
     print(f"Subject: {subject}")
     print(f"Sender: {sender}")
     print(f"Date: {date}\n")
@@ -268,8 +290,9 @@ graph = builder.compile()
 if __name__ == "__main__":
     state = {"messages": []}
     
-    print("Type an instruction (q to quit):\n")
     while True:
+        
+        print("Type an instruction (q to quit):\n")
         user_message = str(input("> "))
         
         if user_message.lower() == "q":
