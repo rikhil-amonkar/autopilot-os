@@ -189,7 +189,7 @@ def extract_email_info(email_id: str):
     
     # * Validate existance
     if not current_email:
-        return "Could not find a matching email."
+        return [None, None, None, "Could not find a matching email."]
         
     encoded_email_body = None  # Initialize email body
     mime_type = None  # Initialize text type 
@@ -224,16 +224,19 @@ def extract_email_info(email_id: str):
     # * Validate email body
     if not encoded_email_body:
         valid_body = False
-        
-    full_email_body = ascii_text_convert(encoded_email_body)  # Decode email body
+    
+    # * Decode email if exists    
+    if valid_body:
+        full_email_body = ascii_text_convert(encoded_email_body)  # Decode email body
     
     # * Check for HTML, and extract
-    if mime_type == "text/html":
+    if mime_type == "text/html" and full_email_body:
         full_email_body = extract_text_from_html(full_email_body)
         
     # * Validate text ratio
-    if not validate_text_amount(full_email_body):
-        valid_body = False
+    if full_email_body:
+        if not validate_text_amount(full_email_body):
+            valid_body = False
     
     # * Store info if valid
     if not valid_body:
