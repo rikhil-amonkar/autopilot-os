@@ -104,8 +104,15 @@ def list_unread_emails(limit: int = 10):
     # * Display email list to terminal
     for clean_id in cleaned_ids:
         
+        # # DEBUG: Print cleaned ID before extracting info
+        # print("CLEAN ID:", clean_id)
+        
         # * Extract email contents
-        subject, sender, date, _ = extract_email_info(clean_id)
+        email_info = extract_email_info(clean_id)
+        if email_info:
+            subject, sender, date = email_info[0], email_info[1], email_info[2]
+        else:
+            print("Could not extract emails.")
         
         if subject and sender and date:
             date = date[:25]
@@ -132,7 +139,6 @@ def ascii_text_convert(email_content: str):
     
     # * Return if email content is already plain text
     except Exception:
-        
         return email_content
 
 # * Extract readable text from code content
@@ -214,7 +220,16 @@ def extract_email_info(email_id: str):
     sender = next((header["value"] for header in headers if header["name"] == "From"), None)
     date = next((header["value"] for header in headers if header["name"] == "Date"), None)
     
-    return subject, sender, date, full_email_body
+    # * Store info
+    email_info = [subject, sender, date, full_email_body]
+    
+    # DEBUG: Print values before returning (unpack issue)
+    print("UNPACK:", email_info)
+    
+    if email_info:
+        return email_info
+    else:
+        return None
 
 # * Summarize email content based on ID
 @tool
