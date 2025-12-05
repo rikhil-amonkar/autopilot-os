@@ -32,7 +32,6 @@ GMAIL_ADDRESS=os.getenv("GMAIL_ADDRESS")
 # * Define model
 CHAT_MODEL = "llama3.2"
 BASE_URL = "http://host.docker.internal:11434"  # Default Ollama URL (in Docker)
-# LANGUAGE_CLASSIFIER = pipeline("text-classification", model="textattack/bert-base-uncased-CoLA")
 
 # * Scopes for Gmail and Calendar
 SCOPES = [
@@ -45,17 +44,17 @@ class ChatState(TypedDict):
     messages: list
     
 """
-GMAIL API GUIDE:
+***GMAIL API GUIDE NOTES***:
 
-service = connect()  # Returns Gmail API service
+- service = connect()  # Returns Gmail API service
 
-# Example Gmail API methods:
+- # Example Gmail API methods:
 
-service.users().messages().list()           # Get emails
-service.users().messages().send()           # Send email
-service.users().messages().delete()         # Delete email
+  service.users().messages().list()  # Get emails
+  service.users().messages().send()  # Send email
+  service.users().messages().delete()  # Delete email
 
-# Methods follow REST API pattern: service.resource().action()
+- # Methods follow REST API pattern: service.resource().action()
 """
 
 # * Connect to inbox
@@ -76,12 +75,12 @@ def connect():
     
     return service
 
-# * Return list of unread email content
+# * TOOL: Return list of unread email content
 @tool
 def list_unread_emails(limit: int = 10):
     """Collect all emails from the inbox which are classified as "UNREAD" and return a list of email objects. Each object contains: id, subject, sender, and date. Use this structured data to match user descriptions (like 'the Amazon email') to specific email IDs."""
 
-    print("TOOL CALLED: List Unread Emails")
+    print("\nTOOL CALLED: List Unread Emails")
     
     # * Collect unread emails through API service
     service = connect()
@@ -103,7 +102,7 @@ def list_unread_emails(limit: int = 10):
     print("\nHere are your unread emails:\n")
     
     # * Display email list to terminal
-    email_list = []
+    email_list, i = [], 0
     for clean_id in cleaned_ids:
         
         # # DEBUG: Print cleaned ID before extracting info
@@ -118,9 +117,10 @@ def list_unread_emails(limit: int = 10):
         
         if subject and sender and date:
             date = date[:25]
-            print(f"**ID:** {clean_id} | **Subject:** {subject} | **Date:** {date} | **From:** {sender}")
+            i += 1
+            print(f"\t{i}. ID: {clean_id} | Subject: {subject} | Date: {date} | From: {sender}\n")
         else:
-            print(f"**ID:** {clean_id} | Not Enough Info")
+            print(f"\t{i}. ID: {clean_id} | Not Enough Info\n")
             
         # * Store info in list (more context for LLM)
         email_list.append({
@@ -130,8 +130,8 @@ def list_unread_emails(limit: int = 10):
             "date": date
         })
             
-    print("\n")
     print("="*50)
+    print("\n")
     
     return email_list
     
@@ -177,6 +177,7 @@ def validate_text_amount(text: str):
     
     return ratio > 0.7  # Set a threshold (more than 70% has to be valid text)
 
+# * Extract content and details from email
 def extract_email_info(email_id: str):
     
     # * Locate email from ID through API service
@@ -220,6 +221,7 @@ def extract_email_info(email_id: str):
     date = next((header["value"] for header in headers if header["name"] == "Date"), None)
                 
     valid_body = True  # Set body state
+    full_email_body = None
     
     # * Validate email body
     if not encoded_email_body:
@@ -252,15 +254,18 @@ def extract_email_info(email_id: str):
     else:
         return [None, None, None, None]
 
-# * Summarize email content based on ID
+# * TOOL: Summarize email content based on ID
 @tool
 def summarize_email(email_id: str):
     """Summarize a single email by its message ID. IMPORTANT: Before calling this tool, check if you already have email data from list_unread_emails. If the user references an email by description (e.g., 'the Amazon email', 'the email from John'), look through the structured data from list_unread_emails to find the matching subject or sender, then extract the corresponding ID. If you don't have the email data, set the email_id as None. The email_id must be a string like '19a8f479946bf71e'."""
     
     if email_id:
-        print("TOOL CALLED: Summarize E-Mail on", email_id)
+        print("\nTOOL CALLED: Summarize E-Mail on", email_id)
     else:
-        print("TOOL FAILED: Cannot locate desired email.")
+        print("\nTOOL FAILED: Cannot locate desired email.")
+        
+    print("="*50)
+    print(f"\nEmail summary for '{email_id}':")
     
     # * Clean the email ID format
     email_id = email_id.lower().strip()
@@ -271,21 +276,12 @@ def summarize_email(email_id: str):
     
     # * Extract email contents
     result = extract_email_info(email_id)
+    subject, sender, date, full_email_body = result
     
     # # DEBUG: Check info content and type
     # print(f"DEBUG: extract_email_info returned type: {type(result)}")
-    # print(f"DEBUG: extract_email_info returned value: {result}")   
- 
-    subject, sender, date, full_email_body = result
-
-    # # DEBUG: Email content
-    # print("="*50)
-    # print(f"Email ID: {email_id}\n")
-    # print(f"Subject: {subject}")
-    # print(f"Sender: {sender}")
-    # print(f"Date: {date}\n")
-    # print(f"Body: {full_email_body}")
-    # print("="*50, "\n")
+    # print(f"DEBUG: extract_email_info returned value: {result}")  
+    # print(f"Body: {full_email_body}") 
 
     # * Create prompt template for LLM
     prompt = (
@@ -298,6 +294,10 @@ def summarize_email(email_id: str):
     
     # * Feed prompt into LLM 
     response = RAW_LLM.invoke(prompt).content 
+    
+    print("\n\t", response)
+    print("="*50)
+    print("\n")
     
     return response
 
@@ -331,23 +331,20 @@ builder.add_edge("tools", END)  # Route from tools to END
 builder.add_conditional_edges("LLM", router, {"tools": "tools", "end": END})  # Compile structure
 
 # * Compile graph with nodes and edges
-graph = builder.compile()
-
-if __name__ == "__main__":
-    state = {"messages": []}
+graph = builder.compile()    
     
-    while True:
+# * Send user query to LLM and extract output
+def prompt_user(user_query: str):
+    state = {"messages": []}  # Create initial state
+    user_message = str(user_query)  # Validate user query
         
-        # * Query user (terminal)
-        print("Type an instruction (q to quit):\n")
-        user_message = str(input("> "))
-        
-        if user_message.lower() == "q":
-            break
-        
-        # * Send message to LLM and invoke
-        state["messages"].append({"role": "user", "content": user_message})
-        state = graph.invoke(state)
-        
-        answer = state["messages"][-1].content
-        print(answer)
+    # * Send message to LLM and invoke
+    state["messages"].append({"role": "user", "content": user_query})
+    state = graph.invoke(state)
+
+    # * Extract output content
+    answer = state["messages"][-1].content
+    
+    return answer    
+
+
