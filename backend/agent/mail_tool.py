@@ -255,9 +255,12 @@ def extract_email_info(email_id: str):
 # * Summarize email content based on ID
 @tool
 def summarize_email(email_id: str):
-    """Summarize a single email by its message ID. IMPORTANT: Before calling this tool, check if you already have email data from list_unread_emails. If the user references an email by description (e.g., 'the Amazon email', 'the email from John'), look through the structured data from list_unread_emails to find the matching subject or sender, then extract the corresponding ID. Only call list_unread_emails again if you don't have the email data. The email_id must be a string like '19a8f479946bf71e'."""
+    """Summarize a single email by its message ID. IMPORTANT: Before calling this tool, check if you already have email data from list_unread_emails. If the user references an email by description (e.g., 'the Amazon email', 'the email from John'), look through the structured data from list_unread_emails to find the matching subject or sender, then extract the corresponding ID. If you don't have the email data, set the email_id as None. The email_id must be a string like '19a8f479946bf71e'."""
     
-    print("TOOL CALLED: Summarize E-Mail on", email_id)
+    if email_id:
+        print("TOOL CALLED: Summarize E-Mail on", email_id)
+    else:
+        print("TOOL FAILED: Cannot locate desired email.")
     
     # * Clean the email ID format
     email_id = email_id.lower().strip()

@@ -6,7 +6,8 @@ langgraph
 
 # Backend
 fastapi
-uvicorn[standard]
+uvicorn
+pydantic
 python-dotenv
 
 # Integrations
