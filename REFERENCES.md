@@ -22,7 +22,7 @@ Quick reference guide for common commands and operations.
 
 ```bash
 docker build -t autopilot-os .
-docker run -it -v $(pwd):/autopilot-os --env-file .env -p 8000:8000 autopilot-os bash
+docker run -it -v $(pwd):/autopilot-os -p 8000:8000 --env-file .env autopilot-os bash
 ```
 
 ## Extra Docker Commands

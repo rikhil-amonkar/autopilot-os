@@ -101,7 +101,7 @@ If you prefer not to set up a virtual environment, you can use Docker:
 2. Create and start a container:
 
    ```bash
-   docker run -it -v $(pwd):/autopilot-os --env-file .env autopilot-os bash
+   docker run -it -v $(pwd):/autopilot-os -p 8000:8000 --env-file .env autopilot-os bash
    ```
 
 3. Once inside the container, run the API:
