@@ -4,7 +4,6 @@ import os
 import base64
 import re
 from html import unescape
-# from transformers import pipeline
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -17,6 +16,8 @@ from langgraph.prebuilt import ToolNode
 from langgraph.graph import StateGraph, START, END
 
 load_dotenv()  # Load .env variables
+
+# ! Note To Self: Make sure the tool descriptions are as descriptive as possible because when a tool is called, the LLM looks at the directions from that description so it knows the context of what the tool is supposed to do.
 
 # * Load Google credentials
 GOOGLE_CLIENT_ID=os.getenv("GOOGLE_CLIENT_ID")
@@ -78,7 +79,7 @@ def connect():
 # * Return list of unread email content
 @tool
 def list_unread_emails(limit: int = 10):
-    """Collect all emails from the inbox which are classified as "UNREAD" and return their corresponding IDs."""
+    """Collect all emails from the inbox which are classified as "UNREAD" and return a list of email objects. Each object contains: id, subject, sender, and date. Use this structured data to match user descriptions (like 'the Amazon email') to specific email IDs."""
 
     print("TOOL CALLED: List Unread Emails")
     
@@ -102,6 +103,7 @@ def list_unread_emails(limit: int = 10):
     print("\nHere are your unread emails:\n")
     
     # * Display email list to terminal
+    email_list = []
     for clean_id in cleaned_ids:
         
         # # DEBUG: Print cleaned ID before extracting info
@@ -119,8 +121,19 @@ def list_unread_emails(limit: int = 10):
             print(f"**ID:** {clean_id} | **Subject:** {subject} | **Date:** {date} | **From:** {sender}")
         else:
             print(f"**ID:** {clean_id} | Not Enough Info")
+            
+        # * Store info in list (more context for LLM)
+        email_list.append({
+            "id": clean_id,
+            "subject": subject,
+            "sender": sender,
+            "date": date
+        })
+            
+    print("\n")
+    print("="*50)
     
-    return cleaned_ids[:limit]
+    return email_list
     
 # * Convert base64 content to base10 text
 def ascii_text_convert(email_content: str):
@@ -199,10 +212,18 @@ def extract_email_info(email_id: str):
                 if "body" in part and "data" in part["body"]:
                     encoded_email_body = part["body"]["data"]
                     mime_type = "text/html"
+                    
+    # * Extract header fields (header contains list of fields)
+    headers = current_email["payload"]["headers"]
+    subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
+    sender = next((header["value"] for header in headers if header["name"] == "From"), None)
+    date = next((header["value"] for header in headers if header["name"] == "Date"), None)
                 
+    valid_body = True  # Set body state
+    
     # * Validate email body
     if not encoded_email_body:
-        return "Could not extract email body content."
+        valid_body = False
         
     full_email_body = ascii_text_convert(encoded_email_body)  # Decode email body
     
@@ -212,29 +233,26 @@ def extract_email_info(email_id: str):
         
     # * Validate text ratio
     if not validate_text_amount(full_email_body):
-        return "Email contains non-text content."
+        valid_body = False
     
-    # * Extract header fields (header contains list of fields)
-    headers = current_email["payload"]["headers"]
-    subject = next((header["value"] for header in headers if header["name"] == "Subject"), None)
-    sender = next((header["value"] for header in headers if header["name"] == "From"), None)
-    date = next((header["value"] for header in headers if header["name"] == "Date"), None)
-    
-    # * Store info
+    # * Store info if valid
+    if not valid_body:
+        full_email_body = "Could not extract email body content."
     email_info = [subject, sender, date, full_email_body]
     
-    # DEBUG: Print values before returning (unpack issue)
-    print("UNPACK:", email_info)
+    # # DEBUG: Print values before returning (unpack issue)
+    # print("UNPACK:", email_info)
     
+    # * Safety for invalid content
     if email_info:
         return email_info
     else:
-        return None
+        return [None, None, None, None]
 
 # * Summarize email content based on ID
 @tool
 def summarize_email(email_id: str):
-    """Summarize a single email by its message ID. The email_id must be a string like '19a8f479946bf71e' returned from list_unread_emails tool."""
+    """Summarize a single email by its message ID. IMPORTANT: Before calling this tool, check if you already have email data from list_unread_emails. If the user references an email by description (e.g., 'the Amazon email', 'the email from John'), look through the structured data from list_unread_emails to find the matching subject or sender, then extract the corresponding ID. Only call list_unread_emails again if you don't have the email data. The email_id must be a string like '19a8f479946bf71e'."""
     
     print("TOOL CALLED: Summarize E-Mail on", email_id)
     
@@ -246,16 +264,22 @@ def summarize_email(email_id: str):
     # print(f"Received email_id value: {repr(email_id)}")
     
     # * Extract email contents
-    subject, sender, date, full_email_body = extract_email_info(email_id)
+    result = extract_email_info(email_id)
+    
+    # # DEBUG: Check info content and type
+    # print(f"DEBUG: extract_email_info returned type: {type(result)}")
+    # print(f"DEBUG: extract_email_info returned value: {result}")   
+ 
+    subject, sender, date, full_email_body = result
 
-    # DEBUG: Email content
-    print("="*50)
-    print(f"Email ID: {email_id}\n")
-    print(f"Subject: {subject}")
-    print(f"Sender: {sender}")
-    print(f"Date: {date}\n")
-    print(f"Body: {full_email_body}")
-    print("="*50, "\n")
+    # # DEBUG: Email content
+    # print("="*50)
+    # print(f"Email ID: {email_id}\n")
+    # print(f"Subject: {subject}")
+    # print(f"Sender: {sender}")
+    # print(f"Date: {date}\n")
+    # print(f"Body: {full_email_body}")
+    # print("="*50, "\n")
 
     # * Create prompt template for LLM
     prompt = (
@@ -291,6 +315,7 @@ def router(state):
 # * Define tools
 tool_node = ToolNode([list_unread_emails, summarize_email])
 
+# * Connect tool nodes
 builder = StateGraph(ChatState)  # Build initial graph
 builder.add_node("LLM", llm_node)  # Create LLM node
 builder.add_node("tools", tool_node)  # Create tools node
@@ -307,14 +332,15 @@ if __name__ == "__main__":
     
     while True:
         
+        # * Query user (terminal)
         print("Type an instruction (q to quit):\n")
         user_message = str(input("> "))
         
         if user_message.lower() == "q":
             break
         
+        # * Send message to LLM and invoke
         state["messages"].append({"role": "user", "content": user_message})
-        
         state = graph.invoke(state)
         
         answer = state["messages"][-1].content

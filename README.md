@@ -39,6 +39,11 @@ Agent: "Done! Added to calendar for tomorrow at 2pm"
 - 🔌 Clean, modular architecture
 - ⚡ FastAPI backend for triggering workflows
 
+## 🎬 Project Demos
+
+**Demo 1 (Dec. 4, 2025):** Terminal tool calling with email list and summaries.
+![Image](https://github.com/user-attachments/assets/af33aa16-4b9f-40b9-823b-903f550b096e)
+
 ## 🏗️ Tech Stack
 
 - Python
