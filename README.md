@@ -44,6 +44,9 @@ Agent: "Done! Added to calendar for tomorrow at 2pm"
 **Demo 1 (Dec. 4, 2025):** Terminal tool calling with email list and summaries.
 ![Image](https://github.com/user-attachments/assets/af33aa16-4b9f-40b9-823b-903f550b096e)
 
+**Demo 2 (Dec. 20, 2025):** Email list call (unformatted) with React chatbot interface.
+![Image](https://github.com/user-attachments/assets/24f8650d-c74e-478c-af55-eed17c4c2db5)
+
 ## 🏗️ Tech Stack
 
 - Python
