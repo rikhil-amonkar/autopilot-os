@@ -1,11 +1,26 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel
 from typing import List, Optional
-from mail_tool import prompt_user, list_unread_emails, summarize_email
+from .mail_tool import prompt_user, list_unread_emails, summarize_email
 
 # * Instance of app
 app = FastAPI()
+
+# * Define origin routes to allow access to
+origins = [
+    "http://localhost:5173"  # Dev server
+]
+
+# * CORS middleware to allow requests from frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # * Base model for email
 class Email(BaseModel):

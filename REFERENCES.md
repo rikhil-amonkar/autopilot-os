@@ -45,6 +45,20 @@ docker run -it -v $(pwd):/autopilot-os -p 8000:8000 --env-file .env autopilot-os
   docker rmi <container-id>
   ```
 
+## How to Run Backend/Frontend (dev)
+
+**Run uvicorn backend for mail routing**
+
+```
+uvicorn backend.mail_routing:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Run React frontend server**
+
+```
+npm run dev
+```
+
 ## Git Commands
 
 **Clone and initialize**
